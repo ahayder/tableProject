@@ -12,7 +12,12 @@ const theme = extendTheme({
     heading: '"Roboto", sans-serif',
     body: '"Roboto", sans-serif',
   },
+  config: {
+    initialColorMode: "dark",
+    useSystemColorMode: false
+  }
 });
+
 
 function MyApp({ Component, pageProps }) {
   return (
