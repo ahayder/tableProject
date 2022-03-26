@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   Flex,
   Table,
@@ -11,26 +12,40 @@ import {
   SpinnerProps,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
-import {
-  ApolloClient,
-  InMemoryCache,
-  gql,
-  createHttpLink,
-} from "@apollo/client";
-import { setContext } from "@apollo/client/link/context";
 
-export default function Home({ collections }) {
-  console.log(collections);
-  if (!collections) {
+const ScrapPage = () => {
+  const [collections, setCollections] = useState(null);
+
+  useEffect(() => {
+    if (collections === null || collections.length === 0) {
+      getData();
+    }
+  }, [collections]);
+
+  const getData = async () => {
+    await axios("/api/get-stats").then((response) => {
+      console.log(response.data);
+      setCollections(response.data);
+    });
+  };
+
+  if (!collections || collections.length === 0) {
     return (
-      <Spinner
-        speed="0.66s"
-        emptyColor="gray.200"
-        color="blue.500"
-        data-testid="loading-spinner"
-        size="xl"
-        thickness="4px"
-      />
+      <Flex
+        width={"100vw"}
+        height={"100vh"}
+        justifyContent={"center"}
+        alignItems={"center"}
+      >
+        <Spinner
+          speed="0.66s"
+          emptyColor="gray.200"
+          color="blue.500"
+          data-testid="loading-spinner"
+          size="xl"
+          thickness="4px"
+        />
+      </Flex>
     );
   }
 
@@ -45,7 +60,7 @@ export default function Home({ collections }) {
             <Th>Average</Th>
             <Th>Volume</Th>
             <Th>MKT CAP</Th>
-            <Th>7D Volumn</Th>
+            <Th>7D Volume</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -53,44 +68,93 @@ export default function Home({ collections }) {
             collections.map((collection, index) => (
               <Tr key={index}>
                 <Td>
-                  <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{collection.node.name}</Text>
-                    <Text fontSize={"sm"}>Circulating Supply: 9682</Text>
+                  <Flex alignItems={"center"}>
+                    <Text fontSize={"lg"} marginRight={"1rem"}>{index + 1}.</Text>
+                    <Flex direction={"column"}>
+                      <Text fontSize={"lg"}>{collection.collectionName}</Text>
+                      <Text fontSize={"sm"}>
+                        Circulating Supply: {collection.circulatingSupply}
+                      </Text>
+                    </Flex>
                   </Flex>
                 </Td>
 
                 <Td>
                   <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{collection.node.stats.floor}</Text>
-                    <Text fontSize={"sm"}>1.15%</Text>
+                    <Text fontSize={"lg"}>
+                      {collection.floorPrice.match(/\d.+/g)}
+                    </Text>
+                    <Text
+                      fontSize={"sm"}
+                      color={
+                        collection.floorPriceTrendDirection
+                          ? "red.400"
+                          : "green.400"
+                      }
+                    >
+                      {collection.floorPriceTrend}
+                    </Text>
                   </Flex>
                 </Td>
 
                 <Td>
                   <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{collection.node.stats.totalSales}</Text>
-                    <Text fontSize={"sm"}>118.67%</Text>
+                    <Text fontSize={"lg"}>{collection.sales}</Text>
+                    <Text
+                      fontSize={"sm"}
+                      color={
+                        collection.floorPriceTrendDirection
+                          ? "red.400"
+                          : "green.400"
+                      }
+                    >
+                      {collection.salesTrend}
+                    </Text>
                   </Flex>
                 </Td>
 
                 <Td>
                   <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{collection.node.stats.average}</Text>
-                    <Text fontSize={"sm"}>43.6%</Text>
+                    <Text fontSize={"lg"}>
+                      {collection.averagePrice.match(/\d.+/g)}
+                    </Text>
+                    <Text
+                      fontSize={"sm"}
+                      color={
+                        collection.floorPriceTrendDirection
+                          ? "red.400"
+                          : "green.400"
+                      }
+                    >
+                      {collection.averagePriceTrend}
+                    </Text>
                   </Flex>
                 </Td>
 
                 <Td>
                   <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{collection.node.stats.volumn}</Text>
-                    <Text fontSize={"sm"}>214%</Text>
+                    <Text fontSize={"lg"}>
+                      {collection.volume.match(/\d.+/g)}
+                    </Text>
+                    <Text
+                      fontSize={"sm"}
+                      color={
+                        collection.floorPriceTrendDirection
+                          ? "red.400"
+                          : "green.400"
+                      }
+                    >
+                      {collection.volumeTrend}
+                    </Text>
                   </Flex>
                 </Td>
 
                 <Td>
                   <Flex direction={"column"}>
-                    <Text fontSize={"lg"}>{41633}</Text>
-                    <Text fontSize={"sm"}>$108457503</Text>
+                    <Text fontSize={"lg"}>
+                      {collection.marketCap.match(/\d.+/g)}
+                    </Text>
+                    <Text fontSize={"sm"}>{collection.marketCapTrend}</Text>
                   </Flex>
                 </Td>
 
@@ -106,97 +170,5 @@ export default function Home({ collections }) {
       </Table>
     </Flex>
   );
-}
-
-export async function getStaticProps() {
-  const httpLink = createHttpLink({
-    uri: "https://graphql.icy.tools/graphql",
-  });
-
-  const authLink = setContext((_, { headers }) => {
-    return {
-      headers: {
-        ...headers,
-        "x-api-key": "22d5b8f881b54f58ac169bafb9d78962",
-      },
-    };
-  });
-
-  const client = new ApolloClient({
-    link: authLink.concat(httpLink),
-    cache: new InMemoryCache(),
-  });
-
-  const data = await client.query({
-    query: gql`
-      query TrendingCollections {
-        contracts(orderBy: SALES, orderDirection: DESC) {
-          edges {
-            node {
-              address
-              ... on ERC721Contract {
-                name
-                stats {
-                  totalSales
-                  average
-                  ceiling
-                  floor
-                  volume
-                }
-                symbol
-              }
-            }
-          }
-        }
-      }
-    `,
-  });
-
-  // const data = await client.query({
-  //   query: gql`
-  //     TrendingCollections(filter: {
-  //       "period": "ONE_HOUR"
-  //     }) {
-  //       ...TrendingCollection
-  //       __typename
-  //     }
-  //   fragment TrendingCollection on TrendingCollection {
-  //     averagePriceInEth
-  //     circulatingSupply
-  //     numberOfSales
-  //     maxPriceInEth
-  //     minPriceInEth
-  //     volumeInEth
-  //     address
-  //     description
-  //     discordUrl
-  //     externalUrl
-  //     imageUrl
-  //     instagramUsername
-  //     name
-  //     slug
-  //     symbol
-  //     telegramUrl
-  //     twitterUsername
-  //     uuid
-  //     dailyVolumes
-  //     deltaStats {
-  //       averagePriceInEth
-  //       numberOfSales
-  //       maxPriceInEth
-  //       minPriceInEth
-  //       volumeInEth
-  //       __typename
-  //     }
-  //     __typename
-  //   }
-    
-  //   `,
-  // });
-
-  return {
-    props: {
-      collections: data.data.contracts.edges,
-    },
-  };
-}
+};
+export default ScrapPage;
